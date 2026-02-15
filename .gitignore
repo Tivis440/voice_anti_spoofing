@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Данные и артефакты (при желании раскомментируйте и добавьте data/raw/*.wav)
+# data/raw/real/*.wav
+# data/raw/fake/*.wav
+logs/*.pt
+*.pt
+*.pth
+
+# Прочее
+.DS_Store
+*.log
