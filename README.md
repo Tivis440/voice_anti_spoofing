@@ -33,10 +33,10 @@ pip install -r requirements.txt
 
 ```bash
 # Сгенерировать тестовые wav (real/fake)
-python scripts/create_dummy_data.py
+python3 scripts/create_dummy_data.py
 
 # Запустить обучение
-python -m src.train --config configs/config.yaml --root .
+python3 -m src.train --config configs/config.yaml --root .
 ```
 
 Чекпоинты сохраняются в `logs/`: `best_model.pt`, `last_model.pt`.
@@ -44,7 +44,7 @@ python -m src.train --config configs/config.yaml --root .
 **Графический интерфейс** (проверка одного wav-файла):
 
 ```bash
-python -m src.gui
+python3 -m src.gui
 ```
 
 Откроется окно: выберите WAV-файл и модель (.pt), нажмите «Проверить» — получите ответ «Реальный голос» или «Синтетический голос» и вероятности.
