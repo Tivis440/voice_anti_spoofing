@@ -41,6 +41,14 @@ python -m src.train --config configs/config.yaml --root .
 
 Чекпоинты сохраняются в `logs/`: `best_model.pt`, `last_model.pt`.
 
+**Графический интерфейс** (проверка одного wav-файла):
+
+```bash
+python -m src.gui
+```
+
+Откроется окно: выберите WAV-файл и модель (.pt), нажмите «Проверить» — получите ответ «Реальный голос» или «Синтетический голос» и вероятности.
+
 ---
 
 ## Структура проекта
@@ -61,7 +69,9 @@ voice_anti_spoofing/
 │   ├── features.py           # log-Mel спектрограмма (librosa)
 │   ├── dataset.py            # VoiceDataset — нарезка сегментов + спектрограммы на лету
 │   ├── model.py              # CNNClassifier
-│   └── train.py              # цикл обучения/валидации, сохранение чекпоинтов
+│   ├── inference.py          # предсказание по одному wav (для GUI и CLI)
+│   ├── train.py              # цикл обучения/валидации, сохранение чекпоинтов
+│   └── gui.py                # графический интерфейс (Tkinter)
 ├── scripts/
 │   └── create_dummy_data.py  # генерация тестовых wav
 ├── logs/                     # best_model.pt, last_model.pt
