@@ -1,0 +1,3 @@
+path,label
+data/raw/real/sample1.wav,0
+data/raw/fake/sample1.wav,1
