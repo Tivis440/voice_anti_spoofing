@@ -1,24 +1,18 @@
-# Voice Anti-Spoofing — параметры проекта
-# Расширяемо для экспериментов (unseen generator, разные датасеты и т.д.)
+audio:
+  sample_rate: 16000
+  segment_seconds: 2.0
 
-# Аудио
-sample_rate: 16000
-segment_length: 2.0   # секунды на один сегмент
+features:
+  n_mfcc: 13
+  n_fft: 512
+  hop_length: 160
 
-# Спектрограмма (log-Mel)
-n_fft: 512
-hop_length: 160
-n_mels: 80
+training:
+  random_state: 42
+  max_iter: 2000
 
-# Обучение
-batch_size: 32
-learning_rate: 0.001
-epochs: 30
-
-# Пути (относительно корня проекта)
 data:
-  raw_dir: data/raw
-  splits_dir: data/splits
+  real_dir: data/raw/real
   train_csv: data/splits/train.csv
   val_csv: data/splits/val.csv
   test_csv: data/splits/test.csv
