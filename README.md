@@ -60,3 +60,28 @@ python3 -m src.gui
 
 1. Для качества обязательно делайте сплиты без утечки по голосу/паре (`pair_id`/speaker-level split).
 2. Для мультикласса балансируйте количество файлов по движкам.
+
+## Шаблон CSV и валидация выборки
+
+Сгенерировать шаблон CSV:
+
+```bash
+python3 scripts/validate_dataset.py --write-template data/splits/template.csv
+```
+
+Проверить готовые `train/val/test`:
+
+```bash
+python3 scripts/validate_dataset.py \
+  --root . \
+  --train data/splits/train.csv \
+  --val data/splits/val.csv \
+  --test data/splits/test.csv
+```
+
+Скрипт проверяет:
+- обязательные колонки: `path,class_name,speaker_id,utt_id`
+- существование файлов
+- дубли внутри сплита
+- утечки между сплитами (`speaker_id`, `(speaker_id,utt_id)`, `path`)
+- дисбаланс классов (по умолчанию порог 10%)
