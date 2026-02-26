@@ -5,8 +5,15 @@ __pycache__/
 .Python
 *.so
 .venv/
+.venv-*/
+.venv*/
 venv/
 env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # IDE
 .idea/
@@ -14,10 +21,9 @@ env/
 *.swp
 *.swo
 
-# Данные и артефакты (при желании раскомментируйте и добавьте data/raw/*.wav)
-# data/raw/real/*.wav
-# data/raw/fake/*.wav
-logs/*.pt
+# Данные и артефакты
+data/raw/
+logs/
 *.pt
 *.pth
 
