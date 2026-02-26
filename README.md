@@ -1,25 +1,33 @@
-# Voice Anti-Spoofing (Article-Based, no log-Mel)
+# Voice Anti-Spoofing (Article Features, Multi-class)
 
-Проект полностью переведен на признаки из статьи и **не использует log-Mel/CNN**.
+Проект детектирует:
+- `real`
+- `fake_<engine>` (например `fake_coqui`, `fake_f5`, ...)
 
-## Что используется
+Инференс работает по **одному файлу**.
 
-Для каждой пары `sample` (проверяемый файл) и `reference` (эталонный real) считаются признаки:
-- `mfcc_euclidean`
-- `mfcc_euclidean_norm`
-- `mfcc_cosine`
-- `spectral_centroid_diff`
-- `energy_ratio_noise_to_signal`
+## Признаки (без log-mel)
 
-Далее обучается бинарный классификатор `real(0) / fake(1)` на `scikit-learn` (`StandardScaler + LogisticRegression`).
+Используются группы признаков из статьи в однофайловом варианте:
+- MFCC-статистики (`mean/std`) и динамика (`delta`, `delta2`)
+- спектральные признаки: centroid, bandwidth, rolloff, flatness
+- энергетические и временные признаки: RMS, ZCR, energy ratio proxy
 
-## Формат сплитов
+## Структура данных
 
-`data/splits/train.csv`, `val.csv`, `test.csv`:
-- обязательные колонки: `path`, `label`
-- опционально: `ref_path` (явный путь к эталону для fake)
+Рекомендуемая:
+- `data/raw/real/.../*.wav`
+- `data/raw/fake/coqui/.../*.wav`
+- `data/raw/fake/f5/.../*.wav`
 
-Если `ref_path` не задан для fake, код ищет эталон в `data/raw/real` по совпадающему `stem` имени файла.
+Сплиты: `data/splits/train.csv`, `val.csv`, `test.csv`
+
+Минимум колонок в CSV:
+- `path`
+
+Опционально:
+- `class_name` (если нет — класс выводится из пути: `real`, `fake_<engine>`)
+- `label` (используется только как fallback)
 
 ## Установка
 
@@ -33,32 +41,22 @@ pip install -r requirements.txt
 python3 -m src.train --config configs/config.yaml --root .
 ```
 
-Артефакты:
-- `logs/best_model.pkl`
+Сохраняется:
+- `logs/best_model.pt`
 - `logs/metrics.json`
 
-## Инференс через GUI
+## Инференс GUI
 
 ```bash
 python3 -m src.gui
 ```
 
-В GUI нужно выбрать:
-- `Sample audio` — проверяемый файл
-- `Reference real audio` — эталонный real голос
-- `Model (.pkl)` — `logs/best_model.pkl`
+На выходе:
+- итог `REAL/FAKE`
+- предсказанный класс (`real` или `fake_<engine>`)
+- вероятности по top-классам
 
-## Структура
+## Замечания
 
-- `src/features.py` — признаки из статьи
-- `src/dataset.py` — сбор feature matrix из CSV
-- `src/model.py` — sklearn-модель
-- `src/train.py` — обучение/валидация/сохранение
-- `src/inference.py` — предсказание по паре sample/reference
-- `src/gui.py` — Tkinter GUI
-- `configs/config.yaml` — параметры аудио/признаков/обучения
-
-## Важно
-
-Текущий подход по статье требует **эталонного real-файла** для сравнения.
-Без эталона корректная оценка по этой методике невозможна.
+1. Для качества обязательно делайте сплиты без утечки по голосу/паре (`pair_id`/speaker-level split).
+2. Для мультикласса балансируйте количество файлов по движкам.

@@ -1,4 +1,4 @@
-"""Признаки по статье для детекции синтезированного голоса (без log-Mel)."""
+"""Однофайловые признаки в стиле статьи (без log-Mel)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import audioread
 import numpy as np
 import soundfile as sf
 from scipy.fft import dct
-from scipy.signal import resample_poly, stft
+from scipy.signal import lfilter, resample_poly, stft
 
 EPS = 1e-10
 
@@ -33,7 +33,7 @@ def _read_via_audioread(path: str | Path) -> tuple[np.ndarray, int]:
 
 
 def load_audio(path: str | Path, sample_rate: int) -> np.ndarray:
-    """Загружает mono-аудио и приводит к sample_rate."""
+    """Загружает mono-аудио и приводит к `sample_rate`."""
     try:
         y, src_sr = sf.read(str(path), always_2d=False)
         if y.ndim > 1:
@@ -56,12 +56,6 @@ def _center_crop_or_pad(y: np.ndarray, target_len: int) -> np.ndarray:
     return np.concatenate([y, pad])
 
 
-def _align_pair(y: np.ndarray, ref: np.ndarray, segment_samples: int) -> tuple[np.ndarray, np.ndarray]:
-    y = _center_crop_or_pad(y, segment_samples)
-    ref = _center_crop_or_pad(ref, segment_samples)
-    return y, ref
-
-
 def _hz_to_mel(hz: np.ndarray) -> np.ndarray:
     return 2595.0 * np.log10(1.0 + hz / 700.0)
 
@@ -72,7 +66,11 @@ def _mel_to_hz(mel: np.ndarray) -> np.ndarray:
 
 def _mel_filterbank(sr: int, n_fft: int, n_mels: int) -> np.ndarray:
     fmin, fmax = 0.0, sr / 2.0
-    mels = np.linspace(_hz_to_mel(np.array([fmin]))[0], _hz_to_mel(np.array([fmax]))[0], n_mels + 2)
+    mels = np.linspace(
+        _hz_to_mel(np.array([fmin]))[0],
+        _hz_to_mel(np.array([fmax]))[0],
+        n_mels + 2,
+    )
     hz = _mel_to_hz(mels)
     bins = np.floor((n_fft + 1) * hz / sr).astype(int)
 
@@ -88,7 +86,7 @@ def _mel_filterbank(sr: int, n_fft: int, n_mels: int) -> np.ndarray:
     return fb
 
 
-def _mfcc(y: np.ndarray, sr: int, n_mfcc: int, n_fft: int, hop_length: int) -> np.ndarray:
+def _mfcc_frames(y: np.ndarray, sr: int, n_mfcc: int, n_fft: int, hop_length: int) -> np.ndarray:
     _, _, zxx = stft(y, fs=sr, nperseg=n_fft, noverlap=n_fft - hop_length, padded=False)
     power = (np.abs(zxx) ** 2).astype(np.float32)
     mel_fb = _mel_filterbank(sr=sr, n_fft=n_fft, n_mels=max(26, n_mfcc * 2))
@@ -98,61 +96,112 @@ def _mfcc(y: np.ndarray, sr: int, n_mfcc: int, n_fft: int, hop_length: int) -> n
     return coeffs.astype(np.float32)
 
 
-def _framewise_euclidean(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    min_t = min(a.shape[1], b.shape[1])
-    if min_t == 0:
-        return np.array([0.0], dtype=np.float32)
-    diff = a[:, :min_t] - b[:, :min_t]
-    return np.sqrt(np.sum(diff * diff, axis=0, dtype=np.float64)).astype(np.float32)
+def _delta(frames: np.ndarray) -> np.ndarray:
+    if frames.shape[1] < 2:
+        return np.zeros_like(frames)
+    kernel = np.array([-0.5, 0.0, 0.5], dtype=np.float32)
+    return lfilter(kernel, [1.0], frames, axis=1).astype(np.float32)
 
 
-def _spectral_centroid(y: np.ndarray, sr: int, n_fft: int, hop_length: int) -> np.ndarray:
-    _, _, zxx = stft(y, fs=sr, nperseg=n_fft, noverlap=n_fft - hop_length, padded=False)
-    mag = np.abs(zxx)
-    freqs = np.linspace(0, sr / 2, mag.shape[0], dtype=np.float32)[:, None]
-    denom = np.sum(mag, axis=0, dtype=np.float64) + EPS
-    return (np.sum(freqs * mag, axis=0, dtype=np.float64) / denom).astype(np.float32)
+def _spectral_stats(y: np.ndarray, sr: int, n_fft: int, hop_length: int) -> dict[str, np.ndarray]:
+    freqs, _, zxx = stft(y, fs=sr, nperseg=n_fft, noverlap=n_fft - hop_length, padded=False)
+    mag = np.abs(zxx).astype(np.float32)
+    power = mag * mag
+    sum_mag = np.sum(mag, axis=0, dtype=np.float64) + EPS
+    sum_power = np.sum(power, axis=0, dtype=np.float64) + EPS
+
+    centroid = np.sum(freqs[:, None] * mag, axis=0, dtype=np.float64) / sum_mag
+    bandwidth = np.sqrt(
+        np.sum(((freqs[:, None] - centroid[None, :]) ** 2) * mag, axis=0, dtype=np.float64) / sum_mag
+    )
+
+    cumsum = np.cumsum(power, axis=0)
+    rolloff_level = 0.85 * sum_power
+    rolloff_idx = np.argmax(cumsum >= rolloff_level[None, :], axis=0)
+    rolloff = freqs[rolloff_idx]
+
+    flatness = np.exp(np.mean(np.log(mag + EPS), axis=0)) / (np.mean(mag, axis=0) + EPS)
+
+    return {
+        "centroid": centroid.astype(np.float32),
+        "bandwidth": bandwidth.astype(np.float32),
+        "rolloff": rolloff.astype(np.float32),
+        "flatness": flatness.astype(np.float32),
+    }
 
 
-def extract_article_features(
+def _zcr(y: np.ndarray, frame_len: int, hop_length: int) -> np.ndarray:
+    if len(y) < frame_len:
+        y = _center_crop_or_pad(y, frame_len)
+    out = []
+    for start in range(0, len(y) - frame_len + 1, hop_length):
+        frame = y[start : start + frame_len]
+        signs = np.signbit(frame)
+        crossings = np.sum(signs[:-1] != signs[1:])
+        out.append(crossings / max(1, frame_len - 1))
+    if not out:
+        out = [0.0]
+    return np.asarray(out, dtype=np.float32)
+
+
+def _rms(y: np.ndarray, frame_len: int, hop_length: int) -> np.ndarray:
+    if len(y) < frame_len:
+        y = _center_crop_or_pad(y, frame_len)
+    out = []
+    for start in range(0, len(y) - frame_len + 1, hop_length):
+        frame = y[start : start + frame_len]
+        out.append(np.sqrt(np.mean(frame * frame) + EPS))
+    if not out:
+        out = [0.0]
+    return np.asarray(out, dtype=np.float32)
+
+
+def _summary_stats(arr: np.ndarray, prefix: str) -> Dict[str, float]:
+    return {
+        f"{prefix}_mean": float(np.mean(arr)),
+        f"{prefix}_std": float(np.std(arr)),
+        f"{prefix}_p25": float(np.percentile(arr, 25)),
+        f"{prefix}_p75": float(np.percentile(arr, 75)),
+    }
+
+
+def extract_article_features_single(
     y: np.ndarray,
-    ref: np.ndarray,
     sr: int,
     n_mfcc: int,
     n_fft: int,
     hop_length: int,
     segment_seconds: float,
 ) -> Dict[str, float]:
-    """Возвращает признаки из статьи (без log-Mel)."""
+    """Single-file признаки на основе групп из статьи."""
     segment_samples = int(sr * segment_seconds)
-    y, ref = _align_pair(y, ref, segment_samples)
+    y = _center_crop_or_pad(y, segment_samples)
 
-    mfcc_y = _mfcc(y, sr, n_mfcc, n_fft, hop_length)
-    mfcc_ref = _mfcc(ref, sr, n_mfcc, n_fft, hop_length)
+    mfcc = _mfcc_frames(y, sr, n_mfcc, n_fft, hop_length)
+    d1 = _delta(mfcc)
+    d2 = _delta(d1)
 
-    frame_dist = _framewise_euclidean(mfcc_y, mfcc_ref)
-    mfcc_euclidean = float(frame_dist.mean())
+    features: Dict[str, float] = {}
+    for i in range(n_mfcc):
+        features[f"mfcc_{i}_mean"] = float(np.mean(mfcc[i]))
+        features[f"mfcc_{i}_std"] = float(np.std(mfcc[i]))
+        features[f"mfcc_d1_{i}_mean"] = float(np.mean(d1[i]))
+        features[f"mfcc_d2_{i}_mean"] = float(np.mean(d2[i]))
 
-    ref_energy = np.sqrt(np.sum(mfcc_ref * mfcc_ref, dtype=np.float64)) + EPS
-    mfcc_euclidean_norm = float(mfcc_euclidean / ref_energy)
+    spec = _spectral_stats(y, sr, n_fft, hop_length)
+    features.update(_summary_stats(spec["centroid"], "centroid"))
+    features.update(_summary_stats(spec["bandwidth"], "bandwidth"))
+    features.update(_summary_stats(spec["rolloff"], "rolloff"))
+    features.update(_summary_stats(spec["flatness"], "flatness"))
 
-    vec_y = mfcc_y.mean(axis=1)
-    vec_ref = mfcc_ref.mean(axis=1)
-    cosine = float(np.dot(vec_y, vec_ref) / ((np.linalg.norm(vec_y) * np.linalg.norm(vec_ref)) + EPS))
+    frame_len = n_fft
+    zcr = _zcr(y, frame_len, hop_length)
+    rms = _rms(y, frame_len, hop_length)
+    features.update(_summary_stats(zcr, "zcr"))
+    features.update(_summary_stats(rms, "rms"))
 
-    centroid_y = _spectral_centroid(y, sr, n_fft, hop_length)
-    centroid_ref = _spectral_centroid(ref, sr, n_fft, hop_length)
-    centroid_diff = float(abs(centroid_y.mean() - centroid_ref.mean()))
+    signal_energy = float(np.sum(y * y, dtype=np.float64)) + EPS
+    spectral_energy = float(np.mean(spec["bandwidth"]))
+    features["energy_ratio_proxy"] = float(spectral_energy / signal_energy)
 
-    noise = y - ref
-    noise_energy = float(np.sum(noise * noise, dtype=np.float64))
-    signal_energy = float(np.sum(ref * ref, dtype=np.float64)) + EPS
-    energy_ratio_noise_to_signal = noise_energy / signal_energy
-
-    return {
-        "mfcc_euclidean": mfcc_euclidean,
-        "mfcc_euclidean_norm": mfcc_euclidean_norm,
-        "mfcc_cosine": cosine,
-        "spectral_centroid_diff": centroid_diff,
-        "energy_ratio_noise_to_signal": float(energy_ratio_noise_to_signal),
-    }
+    return features

@@ -1,4 +1,4 @@
-"""Подготовка пар (sample, reference) и матрицы признаков по CSV-сплитам."""
+"""Подготовка feature matrix для мультиклассовой классификации real/fake_engine."""
 
 from __future__ import annotations
 
@@ -9,10 +9,9 @@ from typing import Dict, Tuple
 import numpy as np
 import pandas as pd
 
-from .features import extract_article_features, load_audio
+from .features import extract_article_features_single, load_audio
 
-
-REQUIRED_COLUMNS = {"path", "label"}
+REQUIRED_COLUMNS = {"path"}
 
 
 @dataclass
@@ -24,51 +23,6 @@ class FeatureConfig:
     hop_length: int
 
 
-class ReferenceResolver:
-    """Подбирает эталон real-аудио для строки сплита."""
-
-    def __init__(self, root_dir: Path, real_dir: Path):
-        self.root_dir = root_dir
-        self.real_dir = real_dir
-        self.real_by_stem = self._build_real_index()
-
-    def _build_real_index(self) -> Dict[str, Path]:
-        exts = {".wav", ".flac", ".mp3", ".opus", ".m4a"}
-        mapping: Dict[str, Path] = {}
-        if not self.real_dir.exists():
-            return mapping
-        for path in self.real_dir.rglob("*"):
-            if path.is_file() and path.suffix.lower() in exts:
-                mapping[path.stem] = path
-        return mapping
-
-    def resolve(self, row: pd.Series) -> Path:
-        sample_path = self._resolve_path(row["path"])
-        label = int(row["label"])
-
-        if label == 0:
-            return sample_path
-
-        explicit_ref = str(row.get("ref_path", "")).strip()
-        if explicit_ref:
-            return self._resolve_path(explicit_ref)
-
-        candidate = self.real_by_stem.get(sample_path.stem)
-        if candidate is not None:
-            return candidate
-
-        raise FileNotFoundError(
-            f"Не найден эталон для fake файла: {sample_path}. "
-            "Добавьте колонку ref_path в CSV или совпадающие stem в real."
-        )
-
-    def _resolve_path(self, path_value: str) -> Path:
-        path = Path(path_value)
-        if path.is_absolute():
-            return path
-        return (self.root_dir / path).resolve()
-
-
 def load_split(csv_path: str | Path) -> pd.DataFrame:
     df = pd.read_csv(csv_path)
     missing = REQUIRED_COLUMNS - set(df.columns)
@@ -77,30 +31,83 @@ def load_split(csv_path: str | Path) -> pd.DataFrame:
     return df
 
 
+def resolve_path(root_dir: Path, path_value: str) -> Path:
+    path = Path(path_value)
+    if path.is_absolute():
+        return path
+    return (root_dir / path).resolve()
+
+
+def infer_class_name(path_value: str, label_value: object | None = None) -> str:
+    parts = Path(path_value).parts
+    if "real" in parts:
+        return "real"
+    if "fake" in parts:
+        idx = parts.index("fake")
+        if idx + 1 < len(parts) - 1:
+            engine = parts[idx + 1]
+            return f"fake_{engine}"
+        return "fake"
+    if label_value is not None:
+        try:
+            numeric = int(label_value)
+            return "real" if numeric == 0 else "fake"
+        except Exception:  # noqa: BLE001
+            return str(label_value)
+    return "unknown"
+
+
+def get_class_names(df: pd.DataFrame) -> list[str]:
+    if "class_name" in df.columns:
+        names = df["class_name"].astype(str).tolist()
+    else:
+        label_col = df["label"] if "label" in df.columns else [None] * len(df)
+        names = [infer_class_name(p, l) for p, l in zip(df["path"], label_col)]
+    uniq = sorted(set(names))
+    if "real" in uniq:
+        uniq.remove("real")
+        uniq = ["real", *uniq]
+    return uniq
+
+
 def build_feature_matrix(
     df: pd.DataFrame,
-    resolver: ReferenceResolver,
+    root_dir: Path,
     feature_cfg: FeatureConfig,
-) -> Tuple[np.ndarray, np.ndarray, list[str]]:
+    class_to_idx: Dict[str, int] | None = None,
+) -> Tuple[np.ndarray, np.ndarray, list[str], Dict[str, int]]:
     rows = []
     labels = []
     feature_names: list[str] | None = None
 
+    if "class_name" in df.columns:
+        class_names = df["class_name"].astype(str).tolist()
+    else:
+        label_col = df["label"] if "label" in df.columns else [None] * len(df)
+        class_names = [infer_class_name(p, l) for p, l in zip(df["path"], label_col)]
+
+    if class_to_idx is None:
+        uniq = sorted(set(class_names))
+        if "real" in uniq:
+            uniq.remove("real")
+            uniq = ["real", *uniq]
+        class_to_idx = {name: idx for idx, name in enumerate(uniq)}
+
     for idx, row in df.iterrows():
-        sample_path = resolver._resolve_path(row["path"])
-        ref_path = resolver.resolve(row)
+        path = resolve_path(root_dir, row["path"])
+        if not path.exists():
+            raise FileNotFoundError(f"Файл не найден: {path}")
 
-        if not sample_path.exists():
-            raise FileNotFoundError(f"Файл не найден: {sample_path}")
-        if not ref_path.exists():
-            raise FileNotFoundError(f"Эталон не найден: {ref_path}")
+        class_name = class_names[idx]
+        if class_name not in class_to_idx:
+            raise ValueError(
+                f"Класс '{class_name}' отсутствует в train-словаре. "
+                "Проверьте соответствие train/val/test по классам."
+            )
 
-        y = load_audio(sample_path, feature_cfg.sample_rate)
-        ref = load_audio(ref_path, feature_cfg.sample_rate)
-
-        feats = extract_article_features(
+        y = load_audio(path, feature_cfg.sample_rate)
+        feats = extract_article_features_single(
             y=y,
-            ref=ref,
             sr=feature_cfg.sample_rate,
             n_mfcc=feature_cfg.n_mfcc,
             n_fft=feature_cfg.n_fft,
@@ -111,7 +118,7 @@ def build_feature_matrix(
         if feature_names is None:
             feature_names = list(feats.keys())
         rows.append([feats[name] for name in feature_names])
-        labels.append(int(row["label"]))
+        labels.append(class_to_idx[class_name])
 
         if (idx + 1) % 200 == 0:
             print(f"  processed: {idx + 1}/{len(df)}")
@@ -119,4 +126,9 @@ def build_feature_matrix(
     if not rows:
         raise ValueError("Пустой сплит: нет строк для обучения")
 
-    return np.asarray(rows, dtype=np.float32), np.asarray(labels, dtype=np.int64), feature_names or []
+    return (
+        np.asarray(rows, dtype=np.float32),
+        np.asarray(labels, dtype=np.int64),
+        feature_names or [],
+        class_to_idx,
+    )

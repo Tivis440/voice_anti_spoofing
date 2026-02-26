@@ -1,4 +1,4 @@
-"""Инференс для модели на признаках статьи (требуется эталонный real-файл)."""
+"""Инференс: один аудиофайл -> real/fake + вероятности классов."""
 
 from __future__ import annotations
 
@@ -6,52 +6,84 @@ from pathlib import Path
 from typing import Dict, Tuple
 
 import numpy as np
+import torch
 
-from .features import extract_article_features, load_audio
-from .model import ArticleBinaryClassifier
+from .features import extract_article_features_single, load_audio
+from .model import FeatureMLP
 
 
 class InferenceError(RuntimeError):
     pass
 
 
-def _build_feature_vector(sample_path: str, ref_path: str, cfg: dict) -> Tuple[np.ndarray, Dict[str, float]]:
+def _get_device() -> torch.device:
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+
+def predict_from_wav(
+    sample_path: str,
+    model_path: str,
+) -> Tuple[str, bool, Dict[str, float], Dict[str, float]]:
+    """Возвращает (predicted_class, is_fake, probs_by_class, features)."""
+    sample = Path(sample_path)
+    model_file = Path(model_path)
+
+    if not sample.exists():
+        raise InferenceError(f"Файл не найден: {sample}")
+    if not model_file.exists():
+        raise InferenceError(f"Модель не найдена: {model_file}")
+
+    device = _get_device()
+    ckpt = torch.load(model_file, map_location=device, weights_only=False)
+
+    class_names = ckpt.get("class_names")
+    feature_names = ckpt.get("feature_names")
+    norm_mean = np.asarray(ckpt.get("norm_mean"), dtype=np.float32)
+    norm_std = np.asarray(ckpt.get("norm_std"), dtype=np.float32)
+    cfg = ckpt.get("config")
+
+    if not all([class_names, feature_names, cfg is not None]):
+        raise InferenceError("Некорректный чекпоинт: отсутствуют class_names/feature_names/config")
+
     audio_cfg = cfg["audio"]
-    feature_cfg = cfg["features"]
+    feat_cfg = cfg["features"]
 
-    y = load_audio(sample_path, audio_cfg["sample_rate"])
-    ref = load_audio(ref_path, audio_cfg["sample_rate"])
-
-    feats = extract_article_features(
+    y = load_audio(sample, sample_rate=audio_cfg["sample_rate"])
+    feature_map = extract_article_features_single(
         y=y,
-        ref=ref,
         sr=audio_cfg["sample_rate"],
-        n_mfcc=feature_cfg["n_mfcc"],
-        n_fft=feature_cfg["n_fft"],
-        hop_length=feature_cfg["hop_length"],
+        n_mfcc=feat_cfg["n_mfcc"],
+        n_fft=feat_cfg["n_fft"],
+        hop_length=feat_cfg["hop_length"],
         segment_seconds=audio_cfg["segment_seconds"],
     )
-    x = np.asarray([[feats[k] for k in feats.keys()]], dtype=np.float32)
-    return x, feats
 
+    x = np.asarray([[feature_map[name] for name in feature_names]], dtype=np.float32)
+    x = (x - norm_mean[None, :]) / np.where(norm_std[None, :] < 1e-8, 1.0, norm_std[None, :])
 
-def predict_from_wav(sample_path: str, ref_path: str, model_path: str) -> Tuple[int, float, float, Dict[str, float]]:
-    if not Path(sample_path).exists():
-        raise InferenceError(f"Файл не найден: {sample_path}")
-    if not Path(ref_path).exists():
-        raise InferenceError(f"Эталон не найден: {ref_path}")
-    if not Path(model_path).exists():
-        raise InferenceError(f"Модель не найдена: {model_path}")
+    hidden_dim = int(ckpt.get("hidden_dim", 128))
+    dropout = float(ckpt.get("dropout", 0.3))
+    model = FeatureMLP(
+        input_dim=x.shape[1],
+        num_classes=len(class_names),
+        hidden_dim=hidden_dim,
+        dropout=dropout,
+    )
+    model.load_state_dict(ckpt["model_state_dict"])
+    model = model.to(device)
+    model.eval()
 
-    payload = ArticleBinaryClassifier.load(model_path)
-    pipeline = payload.get("pipeline")
-    cfg = payload.get("config")
+    with torch.no_grad():
+        logits = model(torch.from_numpy(x).to(device))
+        probs = torch.softmax(logits, dim=1).cpu().numpy()[0]
 
-    if pipeline is None or cfg is None:
-        raise InferenceError("Некорректный файл модели: отсутствует pipeline/config")
+    best_idx = int(np.argmax(probs))
+    predicted_class = class_names[best_idx]
+    probs_by_class = {name: float(probs[i]) for i, name in enumerate(class_names)}
+    is_fake = predicted_class != "real"
 
-    x, feat_map = _build_feature_vector(sample_path, ref_path, cfg)
-    probs = pipeline.predict_proba(x)[0]
-    prob_real, prob_fake = float(probs[0]), float(probs[1])
-    label = int(prob_fake >= prob_real)
-    return label, prob_real, prob_fake, feat_map
+    return predicted_class, is_fake, probs_by_class, feature_map

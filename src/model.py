@@ -1,58 +1,31 @@
-"""Классическая модель (по признакам статьи) для binary real/fake."""
+"""MLP-модель для классификации real/fake_engine по векторным признакам."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Dict, List
-
-import joblib
-import numpy as np
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+import torch
+from torch import nn
 
 
-@dataclass
-class TrainResult:
-    val_accuracy: float
-    report: str
-
-
-class ArticleBinaryClassifier:
-    def __init__(self, random_state: int = 42, max_iter: int = 2000):
-        self.pipeline = Pipeline(
-            steps=[
-                ("scaler", StandardScaler()),
-                (
-                    "clf",
-                    LogisticRegression(
-                        random_state=random_state,
-                        max_iter=max_iter,
-                        class_weight="balanced",
-                    ),
-                ),
-            ]
+class FeatureMLP(nn.Module):
+    def __init__(
+        self,
+        input_dim: int,
+        num_classes: int,
+        hidden_dim: int = 128,
+        dropout: float = 0.3,
+    ):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.BatchNorm1d(hidden_dim),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.ReLU(),
+            nn.BatchNorm1d(hidden_dim // 2),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim // 2, num_classes),
         )
 
-    def fit(self, x_train: np.ndarray, y_train: np.ndarray) -> None:
-        self.pipeline.fit(x_train, y_train)
-
-    def evaluate(self, x_val: np.ndarray, y_val: np.ndarray) -> TrainResult:
-        pred = self.pipeline.predict(x_val)
-        acc = float(accuracy_score(y_val, pred))
-        report = classification_report(y_val, pred, digits=4)
-        return TrainResult(val_accuracy=acc, report=report)
-
-    def predict_proba(self, x: np.ndarray) -> np.ndarray:
-        return self.pipeline.predict_proba(x)
-
-    def save(self, path: str | Path, payload: Dict) -> None:
-        path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        joblib.dump(payload, path)
-
-    @staticmethod
-    def load(path: str | Path) -> Dict:
-        return joblib.load(path)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.net(x)
