@@ -1,4 +1,4 @@
-# Voice Anti-Spoofing (Article Features, Multi-class)
+# Voice Anti-Spoofing 
 
 Проект детектирует:
 - `real`
@@ -6,7 +6,7 @@
 
 Инференс работает по **одному файлу**.
 
-## Признаки (без log-mel)
+## Признаки 
 
 Используются группы признаков из статьи в однофайловом варианте:
 - MFCC-статистики (`mean/std`) и динамика (`delta`, `delta2`)
