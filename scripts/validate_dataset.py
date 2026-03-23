@@ -69,7 +69,7 @@ def _check_duplicate_rows(split: SplitReport) -> list[str]:
     return errors
 
 
-def _check_cross_overlap(reports: Iterable[SplitReport]) -> list[str]:
+def _check_cross_overlap(reports: Iterable[SplitReport], allow_speaker_overlap: bool = False) -> list[str]:
     reports = list(reports)
     errors = []
 
@@ -81,7 +81,7 @@ def _check_cross_overlap(reports: Iterable[SplitReport]) -> list[str]:
             a_speakers = set(a.df["speaker_id"].astype(str))
             b_speakers = set(b.df["speaker_id"].astype(str))
             inter_speakers = a_speakers & b_speakers
-            if inter_speakers:
+            if inter_speakers and not allow_speaker_overlap:
                 errors.append(
                     f"{a.name} ∩ {b.name}: пересечение speaker_id = {len(inter_speakers)} (утечка)"
                 )
@@ -155,6 +155,7 @@ def main() -> int:
     parser.add_argument("--test", type=str, default="data/splits/test.csv")
     parser.add_argument("--imbalance-tolerance", type=float, default=0.10)
     parser.add_argument("--write-template", type=str, default="")
+    parser.add_argument("--allow-speaker-overlap", action="store_true")
     args = parser.parse_args()
 
     if args.write_template:
@@ -202,7 +203,7 @@ def main() -> int:
         errors.extend(_check_duplicate_rows(rep))
         errors.extend(_check_balance(rep, args.imbalance_tolerance))
 
-    errors.extend(_check_cross_overlap(reports))
+    errors.extend(_check_cross_overlap(reports, allow_speaker_overlap=args.allow_speaker_overlap))
 
     print("Dataset validation report")
     print("=" * 32)

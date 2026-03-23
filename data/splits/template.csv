@@ -1,3 +1,0 @@
-path,class_name,speaker_id,utt_id
-data/raw/real/spk001/utt0001.wav,real,spk001,utt0001
-data/raw/fake/coqui/spk001/utt0001.wav,fake_coqui,spk001,utt0001

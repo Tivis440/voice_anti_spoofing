@@ -30,3 +30,12 @@ logs/
 # Прочее
 .DS_Store
 *.log
+
+# macOS AppleDouble
+._*
+~$*
+
+# Локальные выборки и аудио
+data/real/
+data/fake/
+manual_test/

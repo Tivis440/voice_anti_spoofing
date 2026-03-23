@@ -1,0 +1,125 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .bg { fill: #f7f9fc; }
+      .title { font: 700 30px Georgia, 'Times New Roman', serif; fill: #1f2f46; }
+      .subtitle { font: 400 15px Georgia, 'Times New Roman', serif; fill: #5b6e87; }
+      .section { font: 700 20px Georgia, 'Times New Roman', serif; fill: #22364f; }
+      .cardTitle { font: 700 19px Georgia, 'Times New Roman', serif; fill: #22364f; }
+      .body { font: 400 15px Georgia, 'Times New Roman', serif; fill: #3d536f; }
+      .small { font: 400 14px Georgia, 'Times New Roman', serif; fill: #4c617d; }
+      .card { fill: #ffffff; stroke: #8ea1ba; stroke-width: 2; }
+      .accentBlue { fill: #edf5ff; stroke: #7da6d9; stroke-width: 1.8; }
+      .accentGreen { fill: #eff8f3; stroke: #82af92; stroke-width: 1.8; }
+      .accentSand { fill: #fcf7ee; stroke: #c2a777; stroke-width: 1.8; }
+      .accentRose { fill: #fbf1f1; stroke: #c69696; stroke-width: 1.8; }
+      .accentSlate { fill: #eef3f9; stroke: #6986a8; stroke-width: 2.2; }
+      .line { stroke: #8ea1ba; stroke-width: 2.4; }
+      .thin { stroke: #c6d1df; stroke-width: 1.2; }
+      .chip { fill: #f6f9fd; stroke: #d6dfeb; stroke-width: 1.1; }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#8ea1ba"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1600" height="900"/>
+
+  <text x="70" y="72" class="title">Общая схема решения</text>
+  <text x="70" y="104" class="subtitle">Пайплайн проекта: от аудиофайла до определения класса и выдачи вероятностей</text>
+
+  <rect x="75" y="180" width="250" height="315" rx="16" class="accentBlue"/>
+  <text x="105" y="222" class="cardTitle">1. Входные данные</text>
+  <line x1="105" y1="236" x2="295" y2="236" class="thin"/>
+  <rect x="105" y="266" width="190" height="110" rx="10" class="card"/>
+  <path d="M132 334 C152 286, 184 286, 200 334 C215 382, 246 382, 267 334" stroke="#3366cc" stroke-width="5" fill="none"/>
+  <line x1="130" y1="358" x2="270" y2="358" class="thin"/>
+  <text x="200" y="402" text-anchor="middle" class="body">Аудиофайл</text>
+  <text x="105" y="432" class="body">• Реальная или синтетическая речь</text>
+  <text x="105" y="457" class="body">• Форматы: wav, opus, mp3, flac</text>
+  <text x="105" y="482" class="body">• Один файл на один запуск</text>
+
+  <rect x="390" y="180" width="280" height="315" rx="16" class="accentGreen"/>
+  <text x="420" y="222" class="cardTitle">2. Предобработка</text>
+  <line x1="420" y1="236" x2="640" y2="236" class="thin"/>
+  <rect x="420" y="266" width="220" height="110" rx="10" class="card"/>
+  <path d="M442 330 L474 304 L506 350 L538 292 L570 340 L602 312" stroke="#5f7d68" stroke-width="5" fill="none"/>
+  <line x1="442" y1="358" x2="618" y2="358" class="thin"/>
+  <text x="530" y="402" text-anchor="middle" class="body">Нормализация сигнала</text>
+  <text x="420" y="432" class="body">• Перевод в mono</text>
+  <text x="420" y="457" class="body">• Ресемплирование до 16 kHz</text>
+  <text x="420" y="482" class="body">• Обрезка или дополнение до фиксированного сегмента</text>
+
+  <rect x="735" y="180" width="345" height="315" rx="16" class="accentSand"/>
+  <text x="765" y="222" class="cardTitle">3. Извлечение признаков</text>
+  <line x1="765" y1="236" x2="1050" y2="236" class="thin"/>
+  <rect x="765" y="266" width="285" height="110" rx="10" class="card"/>
+  <rect x="790" y="287" width="34" height="68" fill="#c8dbf2"/>
+  <rect x="830" y="272" width="34" height="83" fill="#a9c4e7"/>
+  <rect x="870" y="246" width="34" height="109" fill="#87addd"/>
+  <rect x="910" y="224" width="34" height="131" fill="#5a8fd4"/>
+  <rect x="950" y="258" width="34" height="97" fill="#9bbbe4"/>
+  <rect x="990" y="294" width="34" height="61" fill="#c8dbf2"/>
+  <line x1="786" y1="358" x2="1028" y2="358" class="thin"/>
+  <text x="907" y="402" text-anchor="middle" class="body">Фиксированный вектор признаков</text>
+  <text x="765" y="432" class="body">• Мел-кепстральные признаки и производные</text>
+  <text x="765" y="457" class="body">• Спектральные характеристики</text>
+  <text x="765" y="482" class="body">• Временные и энергетические показатели</text>
+
+  <rect x="1145" y="180" width="375" height="315" rx="16" class="accentRose"/>
+  <text x="1175" y="222" class="cardTitle">4. Классификация MLP</text>
+  <line x1="1175" y1="236" x2="1490" y2="236" class="thin"/>
+  <rect x="1175" y="266" width="315" height="135" rx="10" class="card"/>
+  <circle cx="1235" cy="307" r="11" fill="#8fb2e6"/>
+  <circle cx="1235" cy="341" r="11" fill="#8fb2e6"/>
+  <circle cx="1288" cy="289" r="11" fill="#9ec8ad"/>
+  <circle cx="1288" cy="322" r="11" fill="#9ec8ad"/>
+  <circle cx="1288" cy="355" r="11" fill="#9ec8ad"/>
+  <circle cx="1350" cy="300" r="11" fill="#d7bf95"/>
+  <circle cx="1350" cy="341" r="11" fill="#d7bf95"/>
+  <circle cx="1420" cy="289" r="11" fill="#dba8a8"/>
+  <circle cx="1420" cy="322" r="11" fill="#dba8a8"/>
+  <circle cx="1420" cy="355" r="11" fill="#dba8a8"/>
+  <line x1="1246" y1="307" x2="1277" y2="289" class="thin"/>
+  <line x1="1246" y1="307" x2="1277" y2="322" class="thin"/>
+  <line x1="1246" y1="307" x2="1277" y2="355" class="thin"/>
+  <line x1="1246" y1="341" x2="1277" y2="289" class="thin"/>
+  <line x1="1246" y1="341" x2="1277" y2="322" class="thin"/>
+  <line x1="1246" y1="341" x2="1277" y2="355" class="thin"/>
+  <line x1="1299" y1="289" x2="1339" y2="300" class="thin"/>
+  <line x1="1299" y1="322" x2="1339" y2="300" class="thin"/>
+  <line x1="1299" y1="355" x2="1339" y2="341" class="thin"/>
+  <line x1="1361" y1="300" x2="1409" y2="289" class="thin"/>
+  <line x1="1361" y1="300" x2="1409" y2="322" class="thin"/>
+  <line x1="1361" y1="341" x2="1409" y2="355" class="thin"/>
+  <text x="1332" y="424" text-anchor="middle" class="body">Архитектура: 77 → 192 → 96 → классы</text>
+  <text x="1175" y="455" class="body">• Линейные слои + ReLU</text>
+  <text x="1175" y="480" class="body">• BatchNorm и Dropout</text>
+
+  <line x1="325" y1="337" x2="390" y2="337" class="line" marker-end="url(#arrow)"/>
+  <line x1="670" y1="337" x2="735" y2="337" class="line" marker-end="url(#arrow)"/>
+  <line x1="1080" y1="337" x2="1145" y2="337" class="line" marker-end="url(#arrow)"/>
+
+  <rect x="130" y="575" width="1340" height="230" rx="18" class="accentSlate"/>
+  <text x="165" y="622" class="section">5. Результат работы системы</text>
+  <line x1="165" y1="638" x2="1435" y2="638" class="thin"/>
+
+  <rect x="175" y="670" width="260" height="92" rx="12" class="chip"/>
+  <text x="205" y="705" class="cardTitle">Определение класса</text>
+  <text x="205" y="735" class="body">real или fake_движок</text>
+
+  <rect x="470" y="670" width="320" height="92" rx="12" class="chip"/>
+  <text x="500" y="705" class="cardTitle">Вероятности классов</text>
+  <text x="500" y="735" class="body">softmax-оценка по каждому варианту</text>
+
+  <rect x="825" y="670" width="300" height="92" rx="12" class="chip"/>
+  <text x="855" y="705" class="cardTitle">Интерпретация результата</text>
+  <text x="855" y="735" class="body">проверка уверенности модели</text>
+
+  <rect x="1160" y="670" width="260" height="92" rx="12" class="chip"/>
+  <text x="1190" y="705" class="cardTitle">Использование в GUI/TUI</text>
+  <text x="1190" y="735" class="body">анализ одного аудиофайла</text>
+
+  <text x="165" y="790" class="small">Система ориентирована на воспроизводимый локальный анализ: один аудиофайл проходит фиксированный конвейер обработки,</text>
+  <text x="165" y="814" class="small">после чего модель выдает итоговый класс и вероятности, которые могут быть использованы в интерфейсе или в исследовательском эксперименте.</text>
+</svg>

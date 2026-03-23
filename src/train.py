@@ -17,6 +17,43 @@ from .dataset import FeatureConfig, build_feature_matrix, load_split
 from .model import FeatureMLP
 
 
+def save_training_plot(
+    logs_dir: Path,
+    history_epoch: list[int],
+    history_train_loss: list[float],
+    history_val_acc: list[float],
+    history_val_f1: list[float],
+) -> None:
+    """Сохраняет график обучения (loss/metrics) в PNG."""
+    try:
+        import matplotlib.pyplot as plt
+    except Exception as exc:  # noqa: BLE001
+        print(f"Warning: matplotlib недоступен, график не сохранен ({exc})")
+        return
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+
+    ax1.plot(history_epoch, history_train_loss, marker="o", label="train_loss")
+    ax1.set_ylabel("Loss")
+    ax1.set_title("Training Loss")
+    ax1.grid(True, alpha=0.3)
+    ax1.legend(loc="best")
+
+    ax2.plot(history_epoch, history_val_acc, marker="o", label="val_acc")
+    ax2.plot(history_epoch, history_val_f1, marker="o", label="val_f1")
+    ax2.set_xlabel("Epoch")
+    ax2.set_ylabel("Score")
+    ax2.set_title("Validation Metrics")
+    ax2.grid(True, alpha=0.3)
+    ax2.legend(loc="best")
+
+    fig.tight_layout()
+    out_path = logs_dir / "training_plot.png"
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+    print(f"Saved plot: {out_path}")
+
+
 def load_config(config_path: str | Path) -> dict:
     with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
@@ -140,6 +177,10 @@ def main() -> None:
     patience = int(cfg["training"].get("early_stopping_patience", 5))
     best_f1 = -1.0
     bad_epochs = 0
+    history_epoch: list[int] = []
+    history_train_loss: list[float] = []
+    history_val_acc: list[float] = []
+    history_val_f1: list[float] = []
 
     for epoch in range(1, epochs + 1):
         model.train()
@@ -161,6 +202,10 @@ def main() -> None:
         train_loss = running_loss / max(1, seen)
         val_acc, val_f1, _, _ = evaluate(model, val_loader, device)
         print(f"Epoch {epoch}/{epochs} train_loss={train_loss:.4f} val_acc={val_acc:.4f} val_f1={val_f1:.4f}")
+        history_epoch.append(epoch)
+        history_train_loss.append(float(train_loss))
+        history_val_acc.append(float(val_acc))
+        history_val_f1.append(float(val_f1))
 
         if val_f1 > best_f1:
             best_f1 = val_f1
@@ -185,6 +230,30 @@ def main() -> None:
             if bad_epochs >= patience:
                 print("Early stopping.")
                 break
+
+    history = [
+        {
+            "epoch": ep,
+            "train_loss": tr_loss,
+            "val_accuracy": v_acc,
+            "val_macro_f1": v_f1,
+        }
+        for ep, tr_loss, v_acc, v_f1 in zip(
+            history_epoch, history_train_loss, history_val_acc, history_val_f1
+        )
+    ]
+    (logs_dir / "training_history.json").write_text(
+        json.dumps(history, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    print(f"Saved history: {logs_dir / 'training_history.json'}")
+    save_training_plot(
+        logs_dir=logs_dir,
+        history_epoch=history_epoch,
+        history_train_loss=history_train_loss,
+        history_val_acc=history_val_acc,
+        history_val_f1=history_val_f1,
+    )
 
     ckpt = torch.load(logs_dir / "best_model.pt", map_location=device, weights_only=False)
     model.load_state_dict(ckpt["model_state_dict"])

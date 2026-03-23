@@ -1,24 +1,20 @@
 audio:
   sample_rate: 16000
   segment_seconds: 2.0
-
 features:
   n_mfcc: 13
   n_fft: 512
   hop_length: 160
-
 training:
-  batch_size: 64
+  batch_size: 128
   learning_rate: 0.001
   weight_decay: 0.0001
-  hidden_dim: 128
-  dropout: 0.3
-  epochs: 20
-  early_stopping_patience: 5
-
+  hidden_dim: 192
+  dropout: 0.1
+  epochs: 8
+  early_stopping_patience: 7
 data:
   train_csv: data/splits/train.csv
   val_csv: data/splits/val.csv
   test_csv: data/splits/test.csv
-
 logs_dir: logs

@@ -1,0 +1,114 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .bg { fill: #f7f9fc; }
+      .title { font: 700 30px Georgia, 'Times New Roman', serif; fill: #1f2f46; }
+      .subtitle { font: 400 15px Georgia, 'Times New Roman', serif; fill: #5b6e87; }
+      .section { font: 700 20px Georgia, 'Times New Roman', serif; fill: #22364f; }
+      .cardTitle { font: 700 18px Georgia, 'Times New Roman', serif; fill: #22364f; }
+      .body { font: 400 15px Georgia, 'Times New Roman', serif; fill: #3d536f; }
+      .small { font: 400 14px Georgia, 'Times New Roman', serif; fill: #4c617d; }
+      .line { stroke: #8ea1ba; stroke-width: 2.2; }
+      .thin { stroke: #c6d1df; stroke-width: 1.2; }
+      .card { fill: #ffffff; stroke: #8ea1ba; stroke-width: 2; }
+      .cardSoft { fill: #fbfcfe; stroke: #c6d1df; stroke-width: 1.4; }
+      .problem { fill: #eef3f9; stroke: #6986a8; stroke-width: 2.5; }
+      .accentBlue { fill: #edf5ff; stroke: #7da6d9; stroke-width: 1.8; }
+      .accentGreen { fill: #eff8f3; stroke: #82af92; stroke-width: 1.8; }
+      .accentSand { fill: #fcf7ee; stroke: #c2a777; stroke-width: 1.8; }
+      .accentRose { fill: #fbf1f1; stroke: #c69696; stroke-width: 1.8; }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#8ea1ba"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1600" height="900"/>
+
+  <text x="70" y="72" class="title">Дерево корневых причин создания проекта</text>
+  <text x="70" y="104" class="subtitle">Проект: распознавание синтезированной речи на основе акустических признаков и многослойного перцептрона</text>
+
+  <rect x="600" y="145" width="400" height="94" rx="14" class="problem"/>
+  <text x="800" y="182" text-anchor="middle" class="section">Ключевая проблема</text>
+  <text x="800" y="212" text-anchor="middle" class="body">Отсутствие доступной и воспроизводимой системы</text>
+  <text x="800" y="234" text-anchor="middle" class="body">автоматического различения реальной и синтетической речи</text>
+
+  <line x1="800" y1="239" x2="800" y2="290" class="line"/>
+  <line x1="800" y1="290" x2="250" y2="290" class="line"/>
+  <line x1="800" y1="290" x2="580" y2="290" class="line"/>
+  <line x1="800" y1="290" x2="1020" y2="290" class="line"/>
+  <line x1="800" y1="290" x2="1350" y2="290" class="line"/>
+
+  <line x1="250" y1="290" x2="250" y2="320" class="line"/>
+  <line x1="580" y1="290" x2="580" y2="320" class="line"/>
+  <line x1="1020" y1="290" x2="1020" y2="320" class="line"/>
+  <line x1="1350" y1="290" x2="1350" y2="320" class="line"/>
+
+  <rect x="80" y="320" width="340" height="250" rx="14" class="accentBlue"/>
+  <text x="110" y="360" class="cardTitle">1. Технологические причины</text>
+  <line x1="110" y1="374" x2="390" y2="374" class="thin"/>
+  <text x="110" y="408" class="body">• Современные TTS-системы стали массовыми</text>
+  <text x="110" y="433" class="body">  и доступны без сложной подготовки</text>
+  <text x="110" y="468" class="body">• Качество синтеза заметно выросло, поэтому</text>
+  <text x="110" y="493" class="body">  отличать синтетическую речь на слух сложнее</text>
+  <text x="110" y="528" class="body">• Появилась возможность быстрого тиражирования</text>
+  <text x="110" y="553" class="body">  голосов и голосоподобных аудиозаписей</text>
+
+  <rect x="450" y="320" width="260" height="250" rx="14" class="accentGreen"/>
+  <text x="480" y="360" class="cardTitle">2. Практические причины</text>
+  <line x1="480" y1="374" x2="680" y2="374" class="thin"/>
+  <text x="480" y="408" class="body">• Ручная проверка субъективна</text>
+  <text x="480" y="443" class="body">• Анализ аудио занимает время</text>
+  <text x="480" y="478" class="body">• Нужен быстрый локальный</text>
+  <text x="480" y="503" class="body">  инструмент проверки файла</text>
+  <text x="480" y="538" class="body">• Требуется масштабируемость</text>
+
+  <rect x="760" y="320" width="520" height="250" rx="14" class="accentSand"/>
+  <text x="790" y="360" class="cardTitle">3. Научно-методические причины</text>
+  <line x1="790" y1="374" x2="1250" y2="374" class="thin"/>
+  <text x="790" y="408" class="body">• Необходим воспроизводимый ML-пайплайн: данные → признаки → модель → оценка</text>
+  <text x="790" y="443" class="body">• Требуются интерпретируемые признаки, пригодные для анализа в учебной и</text>
+  <text x="790" y="468" class="body">  исследовательской среде</text>
+  <text x="790" y="503" class="body">• Важно сравнить влияние параметров модели и числа признаков на качество</text>
+  <text x="790" y="538" class="body">• Нужна архитектура, пригодная для локального запуска и последующего развития</text>
+
+  <rect x="1310" y="320" width="220" height="250" rx="14" class="accentRose"/>
+  <text x="1340" y="360" class="cardTitle">4. Социальные причины</text>
+  <line x1="1340" y1="374" x2="1510" y2="374" class="thin"/>
+  <text x="1340" y="408" class="body">• Рост риска подмены голоса</text>
+  <text x="1340" y="443" class="body">• Возможность голосового</text>
+  <text x="1340" y="468" class="body">  мошенничества и обмана</text>
+  <text x="1340" y="503" class="body">• Снижение доверия к аудио</text>
+
+  <line x1="250" y1="570" x2="250" y2="622" class="line" marker-end="url(#arrow)"/>
+  <line x1="580" y1="570" x2="580" y2="622" class="line" marker-end="url(#arrow)"/>
+  <line x1="1020" y1="570" x2="1020" y2="622" class="line" marker-end="url(#arrow)"/>
+  <line x1="1350" y1="570" x2="1350" y2="622" class="line" marker-end="url(#arrow)"/>
+
+  <rect x="95" y="640" width="310" height="145" rx="12" class="cardSoft"/>
+  <text x="120" y="680" class="cardTitle">Следствие 1</text>
+  <text x="120" y="715" class="small">Становится сложно отличать</text>
+  <text x="120" y="738" class="small">реальную и синтетическую речь</text>
+  <text x="120" y="761" class="small">без автоматизированной поддержки</text>
+
+  <rect x="425" y="640" width="310" height="145" rx="12" class="cardSoft"/>
+  <text x="450" y="680" class="cardTitle">Следствие 2</text>
+  <text x="450" y="715" class="small">Возникает потребность в модели,</text>
+  <text x="450" y="738" class="small">которая работает на фиксированном</text>
+  <text x="450" y="761" class="small">наборе акустических признаков</text>
+
+  <rect x="755" y="640" width="530" height="145" rx="12" class="cardSoft"/>
+  <text x="780" y="680" class="cardTitle">Следствие 3</text>
+  <text x="780" y="715" class="small">Исследование должно включать не только разработку модели, но и</text>
+  <text x="780" y="738" class="small">подбор признаков, формирование сплитов и анализ параметров обучения</text>
+  <text x="780" y="761" class="small">для получения достоверного и воспроизводимого результата</text>
+
+  <rect x="1305" y="640" width="240" height="145" rx="12" class="cardSoft"/>
+  <text x="1330" y="680" class="cardTitle">Следствие 4</text>
+  <text x="1330" y="715" class="small">Проект получает прикладную</text>
+  <text x="1330" y="738" class="small">ценность в задачах верификации</text>
+  <text x="1330" y="761" class="small">аудиоматериалов</text>
+
+  <rect x="395" y="810" width="810" height="58" rx="12" class="problem"/>
+  <text x="800" y="846" text-anchor="middle" class="body">Итог: проект создается как исследовательская и прикладная система для автоматического детектирования синтезированной речи</text>
+</svg>
